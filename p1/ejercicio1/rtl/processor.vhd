@@ -41,14 +41,14 @@ architecture rtl of processor is
   component reg_bank
      port (
         Clk   : in std_logic; -- Reloj activo en flanco de subida
-        Reset : in std_logic; -- Reset as�ncrono a nivel alto
-        A1    : in std_logic_vector(4 downto 0);   -- Direcci�n para el puerto Rd1
+        Reset : in std_logic; -- Reset asincrono a nivel alto
+        A1    : in std_logic_vector(4 downto 0);   -- Direccion para el puerto Rd1
         Rd1   : out std_logic_vector(31 downto 0); -- Dato del puerto Rd1
-        A2    : in std_logic_vector(4 downto 0);   -- Direcci�n para el puerto Rd2
+        A2    : in std_logic_vector(4 downto 0);   -- Direccion para el puerto Rd2
         Rd2   : out std_logic_vector(31 downto 0); -- Dato del puerto Rd2
-        A3    : in std_logic_vector(4 downto 0);   -- Direcci�n para el puerto Wd3
+        A3    : in std_logic_vector(4 downto 0);   -- Direccion para el puerto Wd3
         Wd3   : in std_logic_vector(31 downto 0);  -- Dato de entrada Wd3
-        We3   : in std_logic -- Habilitaci�n de la escritura de Wd3
+        We3   : in std_logic -- Habilitacion de la escritura de Wd3
      );
   end component reg_bank;
 
