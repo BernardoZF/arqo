@@ -110,8 +110,8 @@ architecture rtl of processor is
   signal Inm_extID, Inm_extIDEX                             : std_logic_vector(31 downto 0); -- La parte baja de la instrucción extendida de signo
   
 
-  signal dataIn_Mem     : std_logic_vector(31 downto 0); --From Data Memory
-  signal Addr_Branch    : std_logic_vector(31 downto 0);
+  signal dataIn_MemMEM, dataIn_MemMEMWB : std_logic_vector(31 downto 0); --From Data Memory
+  signal Addr_Branch                    : std_logic_vector(31 downto 0);
 
   -- Control related signals
   signal Ctrl_JumpID, Ctrl_JumpIDEX, Ctrl_JumpEXMEM               :std_logic;
@@ -138,6 +138,9 @@ begin
 
   PC_nextIF <= Addr_Jump_destMEM when desition_JumpMEM = '1' else PC_plus4IF;
   
+  ---------------------------------------------------
+  -- PC REGISTER PROCESS
+  ---------------------------------------------------
   PC_reg_proc: process(Clk, Reset)
   begin
     if Reset = '1' then
@@ -152,7 +155,7 @@ begin
   InstructionIF <= IDataIn;
 
   ---------------------------------------------------
-  -- Process
+  -- IFID PROCESS
   ---------------------------------------------------
   IFID_process: process(Clk, Reset)
   begin
@@ -164,6 +167,9 @@ begin
     end if;
   end process;
 
+  ---------------------------------------------------
+  -- IDEX PROCESS
+  ---------------------------------------------------
   IDEX_process: process(Clk, Reset)
   begin
     if Reset = '1' then
@@ -201,8 +207,10 @@ begin
       reg_RSIDEX          <= reg_RSID;
       reg_RTIDEX          <= reg_RTID;
 
-
-  EXMEM_process_ process(Clk, Reset) begin
+  ---------------------------------------------------
+  -- EXMEM PROCESS
+  ---------------------------------------------------
+  EXMEM_process: process(Clk, Reset) begin
     if Reset = '1' then
       Alu_IgualEXMEM      <= '0';
       Alu_ResEXMEM        <= '0';
@@ -232,52 +240,61 @@ begin
     end if;
   end process;
 
-  
-      
+  ---------------------------------------------------
+  -- MEMWB PROCESS
+  ---------------------------------------------------
+  MEMWB_process: process(Clk, Reset)
+  begin
+    if Reset = '1' then
+      Ctrl_MemToRegMEMWB  <= '0';
+      Ctrl_RegWriteMEMWB  <= '0';
+      Alu_ResMEMWB        <= (others => '0');
+      dataIn_MemMEMWB     <= (others => '0');
+      reg_RDMEMWB         <= (others => '0');
+    elsif rising_edge(Clk) then
+      Ctrl_MemToRegMEMWB  <= Ctrl_MemToRegEXMEM;
+      Ctrl_RegWriteMEMWB  <= Ctrl_RegWriteEXMEM;
+      Alu_ResMEMWB        <= Alu_ResEXMEM;
+      dataIn_MemMEMWB     <= dataIn_MemMEM;
+      reg_RDMEMWB         <= reg_RDEXMEM;
+    end if;
+  end process;
 
+      
+  ---------------------------------------------------
+  -- PORT MAPS
+  ---------------------------------------------------
   RegsMIPS : reg_bank
   port map (
     Clk   => Clk,
     Reset => Reset,
     A1    => InstructionIFID(25 downto 21),
-    Rd1   => reg_RS,
+    Rd1   => reg_RSID,
     A2    => InstructionIFID(20 downto 16),
     Rd2   => reg_RTID,
     A3    => reg_RDMEMWB,
     Wd3   => reg_RD_dataWB,
     We3   => Ctrl_RegWriteMEMWB
   );
-
+  
+  -- La unidad de control se encuentra en la etapa ID
   UnidadControl : control_unit
   port map(
-    OpCode   => Instruction(31 downto 26),
+    OpCode   => InstructionIFID(31 downto 26),
     -- Señales para el PC
-    Jump   => CONTROL_JUMP,
-    Branch   => Ctrl_Branch,
+    Jump   => Ctrl_JumpID,
+    Branch   => Ctrl_BranchID,
     -- Señales para la memoria
-    MemToReg => Ctrl_MemToReg,
-    MemWrite => Ctrl_MemWrite,
-    MemRead  => Ctrl_MemRead,
+    MemToReg => Ctrl_MemToRegID,
+    MemWrite => Ctrl_MemWriteID,
+    MemRead  => Ctrl_MemReadID,
     -- Señales para la ALU
-    ALUSrc   => Ctrl_ALUSrc,
-    ALUOP    => Ctrl_ALUOP,
+    ALUSrc   => Ctrl_ALUSrcID,
+    ALUOP    => Ctrl_ALUOPID,
     -- Señales para el GPR
-    RegWrite => Ctrl_RegWrite,
-    RegDst   => Ctrl_RegDest
+    RegWrite => Ctrl_RegWriteID,
+    RegDst   => Ctrl_RegDestID
   );
-
-  Inm_ext        <= x"FFFF" & Instruction(15 downto 0) when Instruction(15)='1' else
-                    x"0000" & Instruction(15 downto 0);
-  Addr_Jump      <= PC_plus4(31 downto 28) & Instruction(25 downto 0) & "00";
-  Addr_Branch    <= PC_plus4 + ( Inm_ext(29 downto 0) & "00");
-
-  Ctrl_Jump      <= '0'; --nunca salto incondicional
-
-  Regs_eq_branch <= '1' when (reg_RS = reg_RT) else '0';
-  desition_Jump  <= Ctrl_Jump or (Ctrl_Branch and Regs_eq_branch);
-  Addr_Jump_dest <= Addr_Jump   when Ctrl_Jump='1' else
-                    Addr_Branch when Ctrl_Branch='1' else
-                    (others =>'0');
 
   Alu_control_i: alu_control
   port map(
@@ -295,18 +312,36 @@ begin
     Control  => AluControlEX,
     Result   => Alu_ResEX,
     Signflag => open,
-    Zflag    => ALU_IGUAL
+    Zflag    => Alu_IgualEX
   );
+
+  -- Operacion del Sign extend
+  Inm_extID        <= x"FFFF" & Instruction(15 downto 0) when Instruction(15)='1' else
+                    x"0000" & Instruction(15 downto 0);
+
+  -- Operaciones de Jump y Branch
+  Addr_Jump       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm(25 downto 0) & "00";
+  Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
+
+  Ctrl_Jump       <= '0'; --nunca salto incondicional
+
+  Regs_eq_branch    <= '1' when (reg_RS = reg_RT) else '0';
+  desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and Regs_eq_branch);
+  Addr_Jump_dest    <= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
+                       Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
+                       (others =>'0');
+
+  
 
   Alu_Op2EX    <= reg_RT when Ctrl_ALUSrc = '0' else Inm_extIDEX;
   reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
 
-  DAddr      <= Alu_Res;
-  DDataOut   <= reg_RT;
-  DWrEn      <= Ctrl_MemWrite;
-  dRdEn      <= Ctrl_MemRead;
+  DAddr      <= Alu_ResEXMEM;
+  DDataOut   <= reg_RTEXMEM;
+  DWrEn      <= Ctrl_MemWriteEXMEM;
+  dRdEn      <= Ctrl_MemReadEXMEM;
   dataIn_Mem <= DDataIn;
 
-  reg_RD_data <= dataIn_Mem when Ctrl_MemToReg = '1' else Alu_Res;
+  reg_RD_dataWB <= dataIn_MemMEMWB when Ctrl_MemToRegMEMWB = '1' else Alu_ResMEMWB;
 
 end architecture;
