@@ -87,10 +87,15 @@ architecture rtl of processor is
   signal reg_RD_data  : std_logic_vector(31 downto 0);
   signal reg_RD       : std_logic_vector(4 downto 0);
 
-  signal Regs_eq_branch : std_logic;
-  signal PC_next        : std_logic_vector(31 downto 0);
-  signal PC_reg         : std_logic_vector(31 downto 0);
-  signal PC_plus4       : std_logic_vector(31 downto 0);
+  -- PC related signals
+  signal Regs_eq_branch   : std_logic;
+  signal PC_nextIF        : std_logic_vector(31 downto 0);
+  signal PC_regIF         : std_logic_vector(31 downto 0);
+  signal PC_plus4IF       : std_logic_vector(31 downto 0);
+
+  signal PC_plus4IFID   :std_logic_vector(31 downto 0);
+  signal PC_plus4IDEX   :std_logic_vector(31 downto 0)
+
 
   signal Instruction    : std_logic_vector(31 downto 0); -- La instrucción desde lamem de instr
   signal Inm_ext        : std_logic_vector(31 downto 0); -- La parte baja de la instrucción extendida de signo
@@ -99,7 +104,15 @@ architecture rtl of processor is
   signal dataIn_Mem     : std_logic_vector(31 downto 0); --From Data Memory
   signal Addr_Branch    : std_logic_vector(31 downto 0);
 
-  signal Ctrl_Jump, Ctrl_Branch, Ctrl_MemWrite, Ctrl_MemRead,  Ctrl_ALUSrc, Ctrl_RegDest, Ctrl_MemToReg, Ctrl_RegWrite : std_logic;
+  -- Control related signals
+  signal Ctrl_JumpID, Ctrl_JumpIDEX, Ctrl_JumpEXMEM               :std_logic;
+  signal Ctrl_BranchID, Ctrl_BranchIDEX, Ctrl_Branch_EXMEM        :std_logic;
+  signal Ctrl_MemWriteID, Ctrl_MemWriteIDEX, Ctrl_MemWriteEXMEM   :std_logic;
+  signal Ctrl_MemReadID, Ctrl_MemRead_IDEX, Ctrl_MemReadEXMEM     :std_logic;
+  signal Ctrl_ALUSrcID, Ctrl_AluSrcIDEX                           :std_logic;
+  signal Ctrl_RegDestID, Ctrl_RegDestIDEX                         :std_logic;
+  signal Ctrl_MemToRegID, Ctrl_MemToRegIDEX, Ctrl_MemToRegEXMEM   :std_logic;
+  signal Ctrl_RegWriteID, Ctrl_RegWriteIDEX, Ctrl_RegWriteEXMEM   :std_logic;
   signal Ctrl_ALUOP     : std_logic_vector(2 downto 0);
 
   signal Addr_Jump      : std_logic_vector(31 downto 0);
@@ -141,7 +154,7 @@ begin
   port map(
     OpCode   => Instruction(31 downto 26),
     -- Señales para el PC
-    --Jump   => CONTROL_JUMP,
+    Jump   => CONTROL_JUMP,
     Branch   => Ctrl_Branch,
     -- Señales para la memoria
     MemToReg => Ctrl_MemToReg,
