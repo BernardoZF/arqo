@@ -57,6 +57,7 @@ architecture rtl of processor is
         -- Entrada = codigo de operacion en la instruccion:
         OpCode   : in  std_logic_vector (5 downto 0);
         -- Seniales para el PC
+	Jump     : out 	std_logic; -- 1 = Ejecutandose instruccion jump
         Branch   : out  std_logic; -- 1 = Ejecutandose instruccion branch
         -- Seniales relativas a la memoria
         MemToReg : out  std_logic; -- 1 = Escribir en registro la salida de la mem.
@@ -82,17 +83,17 @@ architecture rtl of processor is
  end component alu_control;
 
   -- ALU relted signals
-  signal Alu_Op2EX                    : std_logic_vector(31 downto 0);
-  signal ALU_IgualEX, Alu_IgualEXMEM  : std_logic;
-  signal AluControlEX                 : std_logic_vector(3 downto 0);
-  signal Alu_ResEXMEM, Alu_ResMEMWB   : std_logic_vector(31 downto 0);
+  signal Alu_Op2EX                    		 : std_logic_vector(31 downto 0);
+  signal ALU_IgualEX, Alu_IgualEXMEM  		 : std_logic;
+  signal AluControlEX                 		 : std_logic_vector(3 downto 0);
+  signal Alu_ResEX, Alu_ResEXMEM, Alu_ResMEMWB   : std_logic_vector(31 downto 0);
 
   -- Register related signals
   
-  signal reg_RDEX, reg_RDEXMEM        : std_logic_vector(4 downto 0);
-  signal reg_RD_dataWB, reg_RDMEMWB   : std_logic_vector(31 downto 0);
-  signal reg_RSID, reg_RSIDEX         : std_logic_vector(31 downto 0);
-  signal reg_RTID, reg_RTIDEX         : std_logic_vector(31 downto 0);
+  signal reg_RDEX, reg_RDEXMEM, reg_RDMEMWB        : std_logic_vector(4 downto 0);
+  signal reg_RD_dataWB                 		   : std_logic_vector(31 downto 0);
+  signal reg_RSID, reg_RSIDEX                      : std_logic_vector(31 downto 0);
+  signal reg_RTID, reg_RTIDEX, reg_RTEXMEM         : std_logic_vector(31 downto 0);
 
   -- PC related signals
   signal Regs_eq_branch   : std_logic;
@@ -101,7 +102,7 @@ architecture rtl of processor is
   signal PC_plus4IF       : std_logic_vector(31 downto 0);
 
   signal PC_plus4IFID   :std_logic_vector(31 downto 0);
-  signal PC_plus4IDEX   :std_logic_vector(31 downto 0)
+  signal PC_plus4IDEX   :std_logic_vector(31 downto 0);
 
   -- Instrucction related signals 
   signal InstructionIF, InstructionIFID, InstructionIDEX    : std_logic_vector(31 downto 0); -- La instrucción desde lamem de instr
@@ -114,12 +115,12 @@ architecture rtl of processor is
   signal Addr_Branch                    : std_logic_vector(31 downto 0);
 
   -- Control related signals
-  signal Ctrl_JumpID, Ctrl_JumpIDEX, Ctrl_JumpEXMEM               :std_logic;
+  signal Ctrl_JumpID, Ctrl_JumpIDEX, Ctrl_JumpEXMEM              :std_logic;
   signal Ctrl_BranchID, Ctrl_BranchIDEX, Ctrl_BranchEXMEM        :std_logic;
-  signal Ctrl_MemWriteID, Ctrl_MemWriteIDEX, Ctrl_MemWriteEXMEM   :std_logic;
-  signal Ctrl_MemReadID, Ctrl_MemRead_IDEX, Ctrl_MemReadEXMEM     :std_logic;
-  signal Ctrl_ALUSrcID, Ctrl_AluSrcIDEX                           :std_logic;
-  signal Ctrl_RegDestID, Ctrl_RegDestIDEX                         :std_logic;
+  signal Ctrl_MemWriteID, Ctrl_MemWriteIDEX, Ctrl_MemWriteEXMEM  :std_logic;
+  signal Ctrl_MemReadID, Ctrl_MemReadIDEX, Ctrl_MemReadEXMEM     :std_logic;
+  signal Ctrl_ALUSrcID, Ctrl_AluSrcIDEX                          :std_logic;
+  signal Ctrl_RegDestID, Ctrl_RegDestIDEX                        :std_logic;
 
   signal Ctrl_MemToRegID, Ctrl_MemToRegIDEX, Ctrl_MemToRegEXMEM, Ctrl_MemToRegMEMWB   :std_logic;
   signal Ctrl_RegWriteID, Ctrl_RegWriteIDEX, Ctrl_RegWriteEXMEM, Ctrl_RegWriteMEMWB   :std_logic;
@@ -181,14 +182,14 @@ begin
       Ctrl_MemWriteIDEX   <= '0';
       Ctrl_RegDestIDEX    <= '0';
       Ctrl_RegWriteIDEX   <= '0';
-      Ctrl_ALUOPIDEX      <= (others <= '0');
-      Inm_extIDEX         <= (others <= '0');
-      InstructionIDEX_Inm <= (others <= '0');
-      InstructionIDEX_RD  <= (others <= '0');
-      InstructionIDEX_RT  <= (others <= '0');
-      PC_plus4IDEX        <= (others <= '0');
-      reg_RSIDEX          <= (others <= '0');
-      reg_RTIDEX          <= (others <= '0');
+      Ctrl_ALUOPIDEX      <= (others => '0');
+      Inm_extIDEX         <= (others => '0');
+      InstructionIDEX_Inm <= (others => '0');
+      InstructionIDEX_RD  <= (others => '0');
+      InstructionIDEX_RT  <= (others => '0');
+      PC_plus4IDEX        <= (others => '0');
+      reg_RSIDEX          <= (others => '0');
+      reg_RTIDEX          <= (others => '0');
     elsif rising_edge(Clk) then
       Ctrl_AluSrcIDEX     <= Ctrl_AluSrcID;
       Ctrl_BranchIDEX     <= Ctrl_BranchID;
@@ -200,24 +201,27 @@ begin
       Ctrl_RegWriteIDEX   <= Ctrl_RegWriteID;
       Ctrl_ALUOPIDEX      <= Ctrl_ALUOPID;
       Inm_extIDEX         <= Inm_extID;
-      InstructionIDEX_Inm <= InstructionIFID_Inm (25 downto 0);
-      InstructionIDEX_RD  <= InstructionIFID_RD (15 downto 11);
-      InstructionIDEX_RT  <= InstructionIFID_RT (20 downto 16);
+      InstructionIDEX_Inm <= InstructionIFID (25 downto 0);
+      InstructionIDEX_RD  <= InstructionIFID (15 downto 11);
+      InstructionIDEX_RT  <= InstructionIFID (20 downto 16);
       PC_plus4IDEX        <= PC_plus4IFID;
       reg_RSIDEX          <= reg_RSID;
       reg_RTIDEX          <= reg_RTID;
+    end if;
+  end process;
 
   ---------------------------------------------------
   -- EXMEM PROCESS
   ---------------------------------------------------
-  EXMEM_process: process(Clk, Reset) begin
+  EXMEM_process: process(Clk, Reset)
+  begin
     if Reset = '1' then
       Alu_IgualEXMEM      <= '0';
-      Alu_ResEXMEM        <= '0';
       Ctrl_BranchEXMEM    <= '0';
       Ctrl_JumpEXMEM      <= '0';
       Ctrl_MemReadEXMEM   <= '0';
       Ctrl_MemToRegEXMEM  <= '0';
+      Ctrl_MemWriteEXMEM  <= '0';
       Ctrl_RegWriteEXMEM  <= '0';
       Addr_BranchEXMEM    <= (others => '0');
       Addr_JumpEXMEM      <= (others => '0');
@@ -226,11 +230,11 @@ begin
       reg_RTEXMEM         <= (others => '0');
     elsif rising_edge(Clk) then
       Alu_IgualEXMEM      <= Alu_IgualEX;
-      Alu_ResEXMEM        <= Alu_ResEX;
       Ctrl_BranchEXMEM    <= Ctrl_BranchIDEX;
       Ctrl_JumpEXMEM      <= Ctrl_JumpIDEX;
       Ctrl_MemReadEXMEM   <= Ctrl_MemReadIDEX;
       Ctrl_MemToRegEXMEM  <= Ctrl_MemToRegIDEX;
+      Ctrl_MemWriteEXMEM  <= Ctrl_MemWriteIDEX;
       Ctrl_RegWriteEXMEM  <= Ctrl_RegWriteIDEX;
       Addr_BranchEXMEM    <= Addr_BranchEX;
       Addr_JumpEXMEM      <= Addr_JumpEX;
@@ -316,31 +320,27 @@ begin
   );
 
   -- Operacion del Sign extend
-  Inm_extID        <= x"FFFF" & Instruction(15 downto 0) when Instruction(15)='1' else
-                    x"0000" & Instruction(15 downto 0);
+  Inm_extID        <= x"FFFF" & InstructionIFID(15 downto 0) when InstructionIFID(15)='1' else
+                    x"0000" & InstructionIFID(15 downto 0);
 
   -- Operaciones de Jump y Branch
-  Addr_Jump       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm(25 downto 0) & "00";
+  Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm(25 downto 0) & "00";
   Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
 
-  Ctrl_Jump       <= '0'; --nunca salto incondicional
-
-  Regs_eq_branch    <= '1' when (reg_RS = reg_RT) else '0';
+  Regs_eq_branch    <= '1' when (reg_RSIDEX = reg_RTIDEX) else '0'; -- Equivalente a Alu_IgualEXMEM
   desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and Regs_eq_branch);
-  Addr_Jump_dest    <= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
+  Addr_Jump_destMEM <= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
                        Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
                        (others =>'0');
 
-  
-
-  Alu_Op2EX    <= reg_RT when Ctrl_ALUSrc = '0' else Inm_extIDEX;
+  Alu_Op2EX    <= reg_RTIDEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
   reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
 
-  DAddr      <= Alu_ResEXMEM;
-  DDataOut   <= reg_RTEXMEM;
-  DWrEn      <= Ctrl_MemWriteEXMEM;
-  dRdEn      <= Ctrl_MemReadEXMEM;
-  dataIn_Mem <= DDataIn;
+  DAddr      	<= Alu_ResEXMEM;
+  DDataOut   	<= reg_RTEXMEM;
+  DWrEn      	<= Ctrl_MemWriteEXMEM;
+  dRdEn      	<= Ctrl_MemReadEXMEM;
+  dataIn_MemMEM <= DDataIn;
 
   reg_RD_dataWB <= dataIn_MemMEMWB when Ctrl_MemToRegMEMWB = '1' else Alu_ResMEMWB;
 
