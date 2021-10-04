@@ -96,7 +96,6 @@ architecture rtl of processor is
   signal reg_RTID, reg_RTIDEX, reg_RTEXMEM         : std_logic_vector(31 downto 0);
 
   -- PC related signals
-  signal Regs_eq_branch   : std_logic;
   signal PC_nextIF        : std_logic_vector(31 downto 0);
   signal PC_regIF         : std_logic_vector(31 downto 0);
   signal PC_plus4IF       : std_logic_vector(31 downto 0);
@@ -137,8 +136,11 @@ architecture rtl of processor is
 
 begin
 
+  ---------------------------------------------------
+  -- IF STAGE
+  ---------------------------------------------------
   PC_nextIF <= Addr_Jump_destMEM when desition_JumpMEM = '1' else PC_plus4IF;
-  
+
   ---------------------------------------------------
   -- PC REGISTER PROCESS
   ---------------------------------------------------
@@ -170,8 +172,49 @@ begin
   end process;
 
   ---------------------------------------------------
+  -- ID STAGE
+  ---------------------------------------------------
+
+  UnidadControl : control_unit
+  port map(
+    OpCode   => InstructionIFID(31 downto 26),
+    -- Señales para el PC
+    Jump   => Ctrl_JumpID,
+    Branch   => Ctrl_BranchID,
+    -- Señales para la memoria
+    MemToReg => Ctrl_MemToRegID,
+    MemWrite => Ctrl_MemWriteID,
+    MemRead  => Ctrl_MemReadID,
+    -- Señales para la ALU
+    ALUSrc   => Ctrl_ALUSrcID,
+    ALUOP    => Ctrl_ALUOPID,
+    -- Señales para el GPR
+    RegWrite => Ctrl_RegWriteID,
+    RegDst   => Ctrl_RegDestID
+  );
+
+
+  RegsMIPS : reg_bank
+  port map (
+    Clk   => Clk,
+    Reset => Reset,
+    A1    => InstructionIFID(25 downto 21),
+    Rd1   => reg_RSID,
+    A2    => InstructionIFID(20 downto 16),
+    Rd2   => reg_RTID,
+    A3    => reg_RDMEMWB,
+    Wd3   => reg_RD_dataWB,
+    We3   => Ctrl_RegWriteMEMWB
+  );
+
+  -- Operacion del Sign extend
+  Inm_extID        <= x"FFFF" & InstructionIFID(15 downto 0) when InstructionIFID(15)='1' else
+                    x"0000" & InstructionIFID(15 downto 0);
+
+  ---------------------------------------------------
   -- IDEX PROCESS
   ---------------------------------------------------
+
   IDEX_process: process(Clk, Reset)
   begin
     if Reset = '1' then
@@ -212,6 +255,36 @@ begin
   end process;
 
   ---------------------------------------------------
+  -- EX STAGE
+  ---------------------------------------------------
+
+  Alu_MIPS : alu
+  port map (
+    OpA      => reg_RSIDEX,
+    OpB      => Alu_Op2EX,
+    Control  => AluControlEX,
+    Result   => Alu_ResEX,
+    Signflag => open,
+    Zflag    => Alu_IgualEX
+  );
+
+  Alu_control_i: alu_control
+  port map(
+    -- Entradas:
+    ALUOp  => Ctrl_ALUOPIDEX, -- Codigo de control desde la unidad de control
+    Funct  => Inm_extIDEX (5 downto 0), -- Campo "funct" de la instruccion
+    -- Salida de control para la ALU:
+    ALUControl => AluControlEX -- Define operacion a ejecutar por la ALU
+  );
+
+  -- Operaciones de Jump y Branch
+  Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm(25 downto 0) & "00";
+  Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
+
+  Alu_Op2EX    <= reg_RTIDEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
+  reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
+
+  ---------------------------------------------------
   -- EXMEM PROCESS
   ---------------------------------------------------
   EXMEM_process: process(Clk, Reset)
@@ -246,6 +319,21 @@ begin
   end process;
 
   ---------------------------------------------------
+  -- MEM STAGE
+  ---------------------------------------------------
+
+  desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and ALU_IgualEXMEM);
+  Addr_Jump_destMEM <= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
+                       Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
+                       (others =>'0');
+
+  DAddr      	<= Alu_ResEXMEM;
+  DDataOut   	<= reg_RTEXMEM;
+  DWrEn      	<= Ctrl_MemWriteEXMEM;
+  dRdEn      	<= Ctrl_MemReadEXMEM;
+  dataIn_MemMEM <= DDataIn;
+
+  ---------------------------------------------------
   -- MEMWB PROCESS
   ---------------------------------------------------
   MEMWB_process: process(Clk, Reset)
@@ -264,84 +352,10 @@ begin
       reg_RDMEMWB         <= reg_RDEXMEM;
     end if;
   end process;
-
-      
+    
   ---------------------------------------------------
-  -- PORT MAPS
+  -- WB STAGE
   ---------------------------------------------------
-  RegsMIPS : reg_bank
-  port map (
-    Clk   => Clk,
-    Reset => Reset,
-    A1    => InstructionIFID(25 downto 21),
-    Rd1   => reg_RSID,
-    A2    => InstructionIFID(20 downto 16),
-    Rd2   => reg_RTID,
-    A3    => reg_RDMEMWB,
-    Wd3   => reg_RD_dataWB,
-    We3   => Ctrl_RegWriteMEMWB
-  );
-  
-  -- La unidad de control se encuentra en la etapa ID
-  UnidadControl : control_unit
-  port map(
-    OpCode   => InstructionIFID(31 downto 26),
-    -- Señales para el PC
-    Jump   => Ctrl_JumpID,
-    Branch   => Ctrl_BranchID,
-    -- Señales para la memoria
-    MemToReg => Ctrl_MemToRegID,
-    MemWrite => Ctrl_MemWriteID,
-    MemRead  => Ctrl_MemReadID,
-    -- Señales para la ALU
-    ALUSrc   => Ctrl_ALUSrcID,
-    ALUOP    => Ctrl_ALUOPID,
-    -- Señales para el GPR
-    RegWrite => Ctrl_RegWriteID,
-    RegDst   => Ctrl_RegDestID
-  );
-
-  Alu_control_i: alu_control
-  port map(
-    -- Entradas:
-    ALUOp  => Ctrl_ALUOPIDEX, -- Codigo de control desde la unidad de control
-    Funct  => Inm_extIDEX (5 downto 0), -- Campo "funct" de la instruccion
-    -- Salida de control para la ALU:
-    ALUControl => AluControlEX -- Define operacion a ejecutar por la ALU
-  );
-
-  Alu_MIPS : alu
-  port map (
-    OpA      => reg_RSIDEX,
-    OpB      => Alu_Op2EX,
-    Control  => AluControlEX,
-    Result   => Alu_ResEX,
-    Signflag => open,
-    Zflag    => Alu_IgualEX
-  );
-
-  -- Operacion del Sign extend
-  Inm_extID        <= x"FFFF" & InstructionIFID(15 downto 0) when InstructionIFID(15)='1' else
-                    x"0000" & InstructionIFID(15 downto 0);
-
-  -- Operaciones de Jump y Branch
-  Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm(25 downto 0) & "00";
-  Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
-
-  Regs_eq_branch    <= '1' when (reg_RSIDEX = reg_RTIDEX) else '0'; -- Equivalente a Alu_IgualEXMEM
-  desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and Regs_eq_branch);
-  Addr_Jump_destMEM <= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
-                       Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
-                       (others =>'0');
-
-  Alu_Op2EX    <= reg_RTIDEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
-  reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
-
-  DAddr      	<= Alu_ResEXMEM;
-  DDataOut   	<= reg_RTEXMEM;
-  DWrEn      	<= Ctrl_MemWriteEXMEM;
-  dRdEn      	<= Ctrl_MemReadEXMEM;
-  dataIn_MemMEM <= DDataIn;
 
   reg_RD_dataWB <= dataIn_MemMEMWB when Ctrl_MemToRegMEMWB = '1' else Alu_ResMEMWB;
 
