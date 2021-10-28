@@ -57,7 +57,7 @@ architecture rtl of processor is
         -- Entrada = codigo de operacion en la instruccion:
         OpCode   : in  std_logic_vector (5 downto 0);
         -- Seniales para el PC
-	Jump     : out 	std_logic; -- 1 = Ejecutandose instruccion jump
+        Jump     : out 	std_logic; -- 1 = Ejecutandose instruccion jump
         Branch   : out  std_logic; -- 1 = Ejecutandose instruccion branch
         -- Seniales relativas a la memoria
         MemToReg : out  std_logic; -- 1 = Escribir en registro la salida de la mem.
@@ -83,13 +83,14 @@ architecture rtl of processor is
  end component alu_control;
 
   -- ALU relted signals
-  signal Alu_Op2EX                    		 : std_logic_vector(31 downto 0);
+  signal Alu_Op1EX, Alu_Op2EX                    		 : std_logic_vector(31 downto 0);
   signal ALU_IgualEX, Alu_IgualEXMEM  		 : std_logic;
   signal AluControlEX                 		 : std_logic_vector(3 downto 0);
   signal Alu_ResEX, Alu_ResEXMEM, Alu_ResMEMWB   : std_logic_vector(31 downto 0);
+  signal Alu_Op2_FWEX,  Alu_Op2_FWEXMEM                   		 : std_logic_vector(31 downto 0);
 
   -- Register related signals
-  
+
   signal reg_RDEX, reg_RDEXMEM, reg_RDMEMWB        : std_logic_vector(4 downto 0);
   signal reg_RD_dataWB                 		   : std_logic_vector(31 downto 0);
   signal reg_RSID, reg_RSIDEX                      : std_logic_vector(31 downto 0);
@@ -99,16 +100,18 @@ architecture rtl of processor is
   signal PC_nextIF        : std_logic_vector(31 downto 0);
   signal PC_regIF         : std_logic_vector(31 downto 0);
   signal PC_plus4IF       : std_logic_vector(31 downto 0);
+  signal PCWrite_DisableIF : std_logic;
+  signal Write_DisableIFID: std_logic;
 
   signal PC_plus4IFID   :std_logic_vector(31 downto 0);
   signal PC_plus4IDEX   :std_logic_vector(31 downto 0);
 
-  -- Instrucction related signals 
+  -- Instrucction related signals
   signal InstructionIF, InstructionIFID, InstructionIDEX    : std_logic_vector(31 downto 0); -- La instrucción desde lamem de instr
   signal InstructionIDEX_Inm                                : std_logic_vector(25 downto 0);
-  signal InstructionIDEX_RD, InstructionIDEX_RT             : std_logic_vector(4 downto 0);
+  signal InstructionIDEX_RD, InstructionIDEX_RT, InstructionIDEX_RS             : std_logic_vector(4 downto 0);
   signal Inm_extID, Inm_extIDEX                             : std_logic_vector(31 downto 0); -- La parte baja de la instrucción extendida de signo
-  
+
 
   signal dataIn_MemMEM, dataIn_MemMEMWB : std_logic_vector(31 downto 0); --From Data Memory
   signal Addr_Branch                    : std_logic_vector(31 downto 0);
@@ -132,7 +135,11 @@ architecture rtl of processor is
   signal desition_JumpMEM             : std_logic;
 
   signal Addr_BranchEX, Addr_BranchEXMEM  : std_logic_vector(31 downto 0);
-  
+
+  --Hazard Signals
+  signal Ctrl_Hazard_ID : std_logic;
+
+
 
 begin
 
@@ -141,30 +148,32 @@ begin
   ---------------------------------------------------
   PC_nextIF <= Addr_Jump_destMEM when desition_JumpMEM = '1' else PC_plus4IF;
   PC_plus4IF <= PC_regIF + 4;
-  InstructionIF <= IDataIn;
+  PCWrite_DisableIF <= '1' when Ctrl_Hazard_ID = '1' else '0';
 
-  PC_reg_proc: process(Clk, Reset)
+  PC_reg_proc: process(Clk, Reset, PCWrite_DisableIF)
   begin
     if Reset = '1' then
       PC_regIF <= (others => '0');
-    elsif rising_edge(Clk) then
+    elsif rising_edge(Clk) and PCWrite_DisableIF = '0' then
       PC_regIF <= PC_nextIF;
     end if;
   end process;
 
   IAddr <= PC_regIF;
-  
+  InstructionIF <= IDataIn;
   ---------------------------------------------------
   -- ETAPA IFID
   ---------------------------------------------------
-  IFID_process: process(Clk, Reset)
+  Write_DisableIFID <= '1' when  Ctrl_Hazard_ID = '1' else '0';
+
+  IFID_process: process(Clk, Reset, Write_DisableIFID)
   begin
     if Reset = '1' then
       PC_plus4IFID <= (others => '0');
       InstructionIFID <= (others => '0');
-    elsif rising_edge(Clk) then
-      PC_plus4_IFID <= PC_plus4_IF;
-      Instruction_IFID <= Instruction_IF;
+    elsif rising_edge(Clk) and Write_DisableIFID = '0' then
+      PC_plus4IFID <= PC_plus4IF;
+      InstructionIFID <= InstructionIF;
     end if;
   end process;
 
@@ -183,7 +192,7 @@ begin
     Wd3   => reg_RD_dataWB,
     We3   => Ctrl_RegWriteMEMWB
   );
-  
+
   UnidadControl : control_unit
   port map(
     OpCode   => InstructionIFID(31 downto 26),
@@ -209,9 +218,9 @@ begin
   ---------------------------------------------------
   -- ETAPA IDEX
   ---------------------------------------------------
-	IDEX_process: process(Clk, Reset)
+	IDEX_process: process(Clk, Reset, Ctrl_Hazard_ID)
   begin
-    if Reset = '1' then
+    if Reset = '1' or (Ctrl_Hazard_ID ='1' and rising_edge(Clk)) then
       Ctrl_AluSrcIDEX     <= '0';
       Ctrl_BranchIDEX     <= '0';
       Ctrl_JumpIDEX       <= '0';
@@ -225,6 +234,7 @@ begin
       InstructionIDEX_Inm <= (others => '0');
       InstructionIDEX_RD  <= (others => '0');
       InstructionIDEX_RT  <= (others => '0');
+      InstructionIDEX_RS  <= (others => '0');
       PC_plus4IDEX        <= (others => '0');
       reg_RSIDEX          <= (others => '0');
       reg_RTIDEX          <= (others => '0');
@@ -242,6 +252,7 @@ begin
       InstructionIDEX_Inm <= InstructionIFID (25 downto 0);
       InstructionIDEX_RD  <= InstructionIFID (15 downto 11);
       InstructionIDEX_RT  <= InstructionIFID (20 downto 16);
+      InstructionIDEX_RS  <= InstructionIFID (25 downto 21);
       PC_plus4IDEX        <= PC_plus4IFID;
       reg_RSIDEX          <= reg_RSID;
       reg_RTIDEX          <= reg_RTID;
@@ -262,7 +273,7 @@ begin
 
   Alu_MIPS : alu
   port map (
-    OpA      => reg_RSIDEX,
+    OpA      => Alu_Op1EX,
     OpB      => Alu_Op2EX,
     Control  => AluControlEX,
     Result   => Alu_ResEX,
@@ -270,13 +281,33 @@ begin
     Zflag    => Alu_IgualEX
   );
 
-	Alu_Op2EX    <= reg_RTIDEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
-	reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
-  
+
+
 	-- Operaciones de Jump y Branch
   Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm & "00";
   Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
-	
+
+  --ADELANTAMIENTOS
+  -- 01 DESDE WB
+  -- 10 DESMDE MEM
+  -- 00 NO ESITEN (PERO VANPIRO ESITEN)
+
+
+  Alu_Op1EX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and reg_RDMEMWB /= "00000" and not
+              ( Ctrl_RegWriteEXMEM = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RS) and
+              reg_RDMEMWB = InstructionIDEX_RS else
+              Alu_ResEXMEM when Ctrl_RegWriteMEMWB = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RS else
+              reg_RSIDEX;
+
+
+Alu_Op2_FWEX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and reg_RDMEMWB /= "00000" and not
+            ( Ctrl_RegWriteEXMEM = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RT) and
+            reg_RDMEMWB = InstructionIDEX_RT else
+            Alu_ResEXMEM when Ctrl_RegWriteMEMWB = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RT else
+            reg_RTIDEX;
+	Alu_Op2EX    <= Alu_Op2_FWEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
+	reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
+
 	---------------------------------------------------
   -- ETAPA EXMEM
   ---------------------------------------------------
@@ -294,7 +325,7 @@ begin
       Addr_JumpEXMEM      <= (others => '0');
       Alu_ResEXMEM        <= (others => '0');
       reg_RDEXMEM         <= (others => '0');
-      reg_RTEXMEM         <= (others => '0');
+      Alu_Op2_FWEXMEM     <= (others => '0');
     elsif rising_edge(Clk) then
       Alu_IgualEXMEM      <= Alu_IgualEX;
       Ctrl_BranchEXMEM    <= Ctrl_BranchIDEX;
@@ -307,7 +338,7 @@ begin
       Addr_JumpEXMEM      <= Addr_JumpEX;
       Alu_ResEXMEM        <= Alu_ResEX;
       reg_RDEXMEM         <= reg_RDEX;
-      reg_RTEXMEM         <= reg_RTIDEX;
+      Alu_Op2_FWEXMEM     <= Alu_Op2_FWEX;
     end if;
   end process;
   ---------------------------------------------------
@@ -319,7 +350,7 @@ begin
 											 (others =>'0');
 
   DAddr      	<= Alu_ResEXMEM;
-  DDataOut   	<= reg_RTEXMEM;
+  DDataOut   	<= Alu_Op2_FWEXMEM;
   DWrEn      	<= Ctrl_MemWriteEXMEM;
   dRdEn      	<= Ctrl_MemReadEXMEM;
   dataIn_MemMEM <= DDataIn;
