@@ -96,7 +96,6 @@ architecture rtl of processor is
   signal reg_RTID, reg_RTIDEX, reg_RTEXMEM         : std_logic_vector(31 downto 0);
 
   -- PC related signals
-  signal Regs_eq_branch   : std_logic;
   signal PC_nextIF        : std_logic_vector(31 downto 0);
   signal PC_regIF         : std_logic_vector(31 downto 0);
   signal PC_plus4IF       : std_logic_vector(31 downto 0);
@@ -164,7 +163,8 @@ begin
       PC_plus4IFID <= (others => '0');
       InstructionIFID <= (others => '0');
     elsif rising_edge(Clk) then
-      PC_plus4IFID <= InstructionIF;
+      PC_plus4_IFID <= PC_plus4_IF;
+      Instruction_IFID <= Instruction_IF;
     end if;
   end process;
 
@@ -274,7 +274,7 @@ begin
 	reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
   
 	-- Operaciones de Jump y Branch
-  Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm(25 downto 0) & "00";
+  Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm & "00";
   Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
 	
 	---------------------------------------------------
@@ -313,8 +313,7 @@ begin
   ---------------------------------------------------
   -- ETAPA MEM
   ---------------------------------------------------
-	Regs_eq_branch    <= '1' when (reg_RSEXMEM = reg_RTEXMEM) else '0';
-	desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and Regs_eq_branch);
+	desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and ALU_IgualEXMEM);
 	Addr_Jump_destMEM	<= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
 											 Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
 											 (others =>'0');
