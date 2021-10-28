@@ -55,7 +55,7 @@ add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Addr_
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Addr_JumpEXMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Alu_IgualEXMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Alu_ResEXMEM
-add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/reg_RTEXMEM
+add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Alu_Op2_FWEXMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/reg_RDEXMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/desition_JumpMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Addr_Jump_destMEM
