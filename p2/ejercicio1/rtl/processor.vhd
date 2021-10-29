@@ -137,7 +137,7 @@ architecture rtl of processor is
   signal Addr_BranchEX, Addr_BranchEXMEM  : std_logic_vector(31 downto 0);
 
   --Hazard Signals
-  signal Ctrl_Hazard_ID : std_logic;
+  signal Ctrl_HazardID : std_logic;
 
 
 
@@ -148,7 +148,7 @@ begin
   ---------------------------------------------------
   PC_nextIF <= Addr_Jump_destMEM when desition_JumpMEM = '1' else PC_plus4IF;
   PC_plus4IF <= PC_regIF + 4;
-  PCWrite_DisableIF <= '1' when Ctrl_Hazard_ID = '1' else '0';
+  PCWrite_DisableIF <= '1' when Ctrl_HazardID = '1' else '0';
 
   PC_reg_proc: process(Clk, Reset, PCWrite_DisableIF)
   begin
@@ -164,7 +164,7 @@ begin
   ---------------------------------------------------
   -- ETAPA IFID
   ---------------------------------------------------
-  Write_DisableIFID <= '1' when  Ctrl_Hazard_ID = '1' else '0';
+  Write_DisableIFID <= '1' when  Ctrl_HazardID = '1' else '0';
 
   IFID_process: process(Clk, Reset, Write_DisableIFID)
   begin
@@ -211,16 +211,21 @@ begin
     RegDst   	=> Ctrl_RegDestID
   );
 
-	-- Operacion del Sign extend
-	Inm_extID        <= x"FFFF" & InstructionIFID(15 downto 0) when InstructionIFID(15)='1' else
-		x"0000" & InstructionIFID(15 downto 0);
+  -- Operacion del Sign extend
+  Inm_extID  <= x"FFFF" & InstructionIFID(15 downto 0) when InstructionIFID(15)='1' else
+                x"0000" & InstructionIFID(15 downto 0);
+
+  -- Deteccion de Hazard UNIT
+  Ctrl_HazardID <= '1' when Ctrl_MemReadIDEX = '1' and
+                    ((InstructionIFID(25 downto 21) = InstructionIDEX_RT) or
+                    (InstructionIFID(20 downto 16) = InstructionIDEX_RT)) else '0';
 
   ---------------------------------------------------
   -- ETAPA IDEX
   ---------------------------------------------------
-	IDEX_process: process(Clk, Reset, Ctrl_Hazard_ID)
+  IDEX_process: process(Clk, Reset, Ctrl_HazardID)
   begin
-    if Reset = '1' or (Ctrl_Hazard_ID ='1' and rising_edge(Clk)) then
+    if Reset = '1' or (Ctrl_HazardID ='1' and rising_edge(Clk)) then
       Ctrl_AluSrcIDEX     <= '0';
       Ctrl_BranchIDEX     <= '0';
       Ctrl_JumpIDEX       <= '0';
@@ -262,7 +267,7 @@ begin
   ---------------------------------------------------
   -- ETAPA EX
   ---------------------------------------------------
-	Alu_control_i: alu_control
+  Alu_control_i: alu_control
   port map(
     -- Entradas:
     ALUOp  => Ctrl_ALUOPIDEX, -- Codigo de control desde la unidad de control
@@ -281,37 +286,46 @@ begin
     Zflag    => Alu_IgualEX
   );
 
-
-
-	-- Operaciones de Jump y Branch
+  -- Operaciones de Jump y Branch
   Addr_JumpEX       <= PC_plus4IDEX(31 downto 28) & InstructionIDEX_Inm & "00";
   Addr_BranchEX   <= PC_plus4IDEX + ( Inm_extIDEX(29 downto 0) & "00");
 
   --ADELANTAMIENTOS
   -- 01 DESDE WB
   -- 10 DESMDE MEM
-  -- 00 NO ESITEN (PERO VANPIRO ESITEN)
+  -- 00 NO EXISTEN
 
 
-  Alu_Op1EX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and reg_RDMEMWB /= "00000" and not
-              ( Ctrl_RegWriteEXMEM = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RS) and
+  Alu_Op1EX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and
+              reg_RDMEMWB /= "00000" and not
+              ( Ctrl_RegWriteEXMEM = '1' and
+              reg_RDEXMEM /= "00000" and
+              reg_RDEXMEM = InstructionIDEX_RS) and
               reg_RDMEMWB = InstructionIDEX_RS else
-              Alu_ResEXMEM when Ctrl_RegWriteMEMWB = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RS else
+              Alu_ResEXMEM when Ctrl_RegWriteEXMEM = '1' and
+              reg_RDEXMEM /= "00000" and
+              reg_RDEXMEM = InstructionIDEX_RS else
               reg_RSIDEX;
 
 
-Alu_Op2_FWEX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and reg_RDMEMWB /= "00000" and not
-            ( Ctrl_RegWriteEXMEM = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RT) and
-            reg_RDMEMWB = InstructionIDEX_RT else
-            Alu_ResEXMEM when Ctrl_RegWriteMEMWB = '1' and reg_RDEXMEM /= "00000" and reg_RDEXMEM = InstructionIDEX_RT else
-            reg_RTIDEX;
-	Alu_Op2EX    <= Alu_Op2_FWEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
-	reg_RDEX     <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
+  Alu_Op2_FWEX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and
+                  reg_RDMEMWB /= "00000" and not
+                  ( Ctrl_RegWriteEXMEM = '1' and
+                  reg_RDEXMEM /= "00000" and
+                  reg_RDEXMEM = InstructionIDEX_RT) and
+                  reg_RDMEMWB = InstructionIDEX_RT else
+                  Alu_ResEXMEM when Ctrl_RegWriteEXMEM = '1' and
+                  reg_RDEXMEM /= "00000" and
+                  reg_RDEXMEM = InstructionIDEX_RT else
+                  reg_RTIDEX;
 
-	---------------------------------------------------
+  Alu_Op2EX <= Alu_Op2_FWEX when Ctrl_ALUSrcIDEX = '0' else Inm_extIDEX;
+  reg_RDEX  <= InstructionIDEX_RT when Ctrl_RegDestIDEX = '0' else InstructionIDEX_RD;
+
+  ---------------------------------------------------
   -- ETAPA EXMEM
   ---------------------------------------------------
-	EXMEM_process: process(Clk, Reset)
+  EXMEM_process: process(Clk, Reset)
   begin
     if Reset = '1' then
       Alu_IgualEXMEM      <= '0';
@@ -344,10 +358,10 @@ Alu_Op2_FWEX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and reg_RDMEMWB /= "
   ---------------------------------------------------
   -- ETAPA MEM
   ---------------------------------------------------
-	desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and ALU_IgualEXMEM);
-	Addr_Jump_destMEM	<= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
-											 Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
-											 (others =>'0');
+  desition_JumpMEM  <= Ctrl_JumpEXMEM or (Ctrl_BranchEXMEM and ALU_IgualEXMEM);
+  Addr_Jump_destMEM	<= Addr_JumpEXMEM   when Ctrl_JumpEXMEM='1' else
+                       Addr_BranchEXMEM when Ctrl_BranchEXMEM='1' else
+                       (others =>'0');
 
   DAddr      	<= Alu_ResEXMEM;
   DDataOut   	<= Alu_Op2_FWEXMEM;
@@ -358,7 +372,7 @@ Alu_Op2_FWEX <= reg_RD_dataWB when Ctrl_RegWriteMEMWB = '1' and reg_RDMEMWB /= "
   ---------------------------------------------------
   -- ETAPA MEMWB
   ---------------------------------------------------
-	MEMWB_process: process(Clk, Reset)
+  MEMWB_process: process(Clk, Reset)
   begin
     if Reset = '1' then
       Ctrl_MemToRegMEMWB  <= '0';
