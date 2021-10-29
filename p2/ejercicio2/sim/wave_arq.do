@@ -35,9 +35,9 @@ add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_AluOpIDEX
 add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_RegWriteIDEX
 add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_RegDestIDEX
 add wave -noupdate -group Execution /processor_tb/i_processor/Inm_extIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Instruction_IDEXRT
-add wave -noupdate -group Execution /processor_tb/i_processor/Instruction_IDEXRD
-add wave -noupdate -group Execution /processor_tb/i_processor/Instruction_IDEXInm
+add wave -noupdate -group Execution /processor_tb/i_processor/InstructionIDEX_RT
+add wave -noupdate -group Execution /processor_tb/i_processor/InstructionIDEX_RD
+add wave -noupdate -group Execution /processor_tb/i_processor/InstructionIDEX_Inm
 add wave -noupdate -group Execution /processor_tb/i_processor/AluControlEX
 add wave -noupdate -group Execution /processor_tb/i_processor/Alu_Op2EX
 add wave -noupdate -group Execution /processor_tb/i_processor/Alu_ResEX
