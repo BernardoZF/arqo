@@ -22,29 +22,29 @@ add wave -noupdate -expand -group {Instruction Decode} /processor_tb/i_processor
 add wave -noupdate -expand -group {Instruction Decode} /processor_tb/i_processor/Inm_extID
 add wave -noupdate -expand -group {Instruction Decode} /processor_tb/i_processor/reg_RSID
 add wave -noupdate -expand -group {Instruction Decode} /processor_tb/i_processor/reg_RTID
-add wave -noupdate -group Execution /processor_tb/i_processor/PC_plus4IDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/reg_RSIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/reg_RTIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_JumpIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_BranchIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_MemToRegIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_MemWriteIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_MemReadIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_AluSrcIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_AluOpIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_RegWriteIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Ctrl_RegDestIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Inm_extIDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Instruction_IDEXRT
-add wave -noupdate -group Execution /processor_tb/i_processor/Instruction_IDEXRD
-add wave -noupdate -group Execution /processor_tb/i_processor/Instruction_IDEXInm
-add wave -noupdate -group Execution /processor_tb/i_processor/AluControlEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Alu_Op2EX
-add wave -noupdate -group Execution /processor_tb/i_processor/Alu_ResEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Alu_IgualEX
-add wave -noupdate -group Execution /processor_tb/i_processor/reg_RDEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Addr_BranchEX
-add wave -noupdate -group Execution /processor_tb/i_processor/Addr_JumpEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/PC_plus4IDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/reg_RSIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/reg_RTIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_JumpIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_BranchIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_MemToRegIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_MemWriteIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_MemReadIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_AluSrcIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_AluOpIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_RegWriteIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Ctrl_RegDestIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Inm_extIDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/InstructionIDEX_RT
+add wave -noupdate -group {Execution} /processor_tb/i_processor/InstructionIDEX_RD
+add wave -noupdate -group {Execution} /processor_tb/i_processor/InstructionIDEX_Inm
+add wave -noupdate -group {Execution} /processor_tb/i_processor/AluControlEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Alu_Op2EX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Alu_ResEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Alu_IgualEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/reg_RDEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Addr_BranchEX
+add wave -noupdate -group {Execution} /processor_tb/i_processor/Addr_JumpEX
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Ctrl_RegWriteEXMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Ctrl_MemToRegEXMEM
 add wave -noupdate -expand -group {Memory Write} /processor_tb/i_processor/Ctrl_BranchEXMEM
