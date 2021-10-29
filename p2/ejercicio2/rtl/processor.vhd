@@ -150,11 +150,11 @@ begin
   PC_plus4IF <= PC_regIF + 4;
   PCWrite_DisableIF <= '1' when Ctrl_Hazard_ID = '1' else '0';
 
-  PC_reg_proc: process(Clk, Reset, PCWrite_DisableIF)
+  PC_reg_proc: process(Clk, Reset, PCWrite_DisableIF, Ctrl_BranchID, Ctrl_BranchIDEX)
   begin
     if Reset = '1' then
       PC_regIF <= (others => '0');
-    elsif rising_edge(Clk) and PCWrite_DisableIF = '0' then
+    elsif rising_edge(Clk) and PCWrite_DisableIF = '0' and Ctrl_BranchID = '0' and Ctrl_BranchIDEX = '0' then
       PC_regIF <= PC_nextIF;
     end if;
   end process;
@@ -166,9 +166,9 @@ begin
   ---------------------------------------------------
   Write_DisableIFID <= '1' when  Ctrl_Hazard_ID = '1' else '0';
 
-  IFID_process: process(Clk, Reset, Write_DisableIFID)
+  IFID_process: process(Clk, Reset, Write_DisableIFID, Ctrl_BranchID, Ctrl_BranchIDEX, Ctrl_BranchEXMEM)
   begin
-    if Reset = '1' then
+    if Reset = '1' or ((Ctrl_BranchID ='1' or Ctrl_BranchIDEX = '1' or Ctrl_BranchEXMEM = '1') and rising_edge(Clk) and Write_DisableIFID = '0' ) then
       PC_plus4IFID <= (others => '0');
       InstructionIFID <= (others => '0');
     elsif rising_edge(Clk) and Write_DisableIFID = '0' then
@@ -215,6 +215,9 @@ begin
 	Inm_extID        <= x"FFFF" & InstructionIFID(15 downto 0) when InstructionIFID(15)='1' else
 		x"0000" & InstructionIFID(15 downto 0);
 
+Ctrl_Hazard_ID <= '1' when (Ctrl_MemReadIDEX = '1' and ((InstructionIFID(25 downto 21) = InstructionIDEX_RT) or (InstructionIFID(20 downto 16) = InstructionIDEX_RT))) or
+                         (Ctrl_BranchID = '1' and ((Ctrl_MemReadEXMEM = '1' and ((InstructionIFID(25 downto 21) = reg_RDEXMEM) or (InstructionIFID(20 downto 16) = reg_RDEXMEM))) or
+                          (Ctrl_RegDestIDEX = '1' and ( (InstructionIFID(25 downto 21) = InstructionIDEX_RD) or (InstructionIFID(20 downto 16) = InstructionIDEX_RD))))) else '0';
   ---------------------------------------------------
   -- ETAPA IDEX
   ---------------------------------------------------
