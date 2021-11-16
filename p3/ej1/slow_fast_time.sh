@@ -1,39 +1,53 @@
-# Ejemplo script, para P3 arq 2019-2020
-
 #!/bin/bash
 
 # inicializar variables
-Ninicio=100
-Npaso=16
-Nfinal=$((Ninicio + 100))
+Ninicio=$((1024))
+Npaso=1024
+Nfinal=$((16384))
 fDAT=slow_fast_time.dat
 fPNG=slow_fast_time.png
+Iter=13
 
 # borrar el fichero DAT y el fichero PNG
-rm -f $fDAT fPNG
+rm -f $fDAT $fPNG
 
 # generar el fichero DAT vacío
 touch $fDAT
 
 echo "Running slow and fast..."
-# bucle para N desde P hasta Q 
 #for N in $(seq $Ninicio $Npaso $Nfinal);
-for ((N = Ninicio ; N <= Nfinal ; N += Npaso)); do
+for i in $(seq 1 1 $Iter); do
+	echo "Iteracion: $i"
+	for ((j=0, N=Ninicio ; N<=Nfinal ; N+=Npaso, j+=1)); do
+		if [ "$i" = "0" ]; then
+			slowTime_t[$j]=0
+			fastTime_t[$j]=0
+		fi
+
+		echo "N: $N / $Nfinal..."
+		# ejecutar los programas slow y fast consecutivamente con tamaño de matriz N
+		# para cada uno, filtrar la línea que contiene el tiempo y seleccionar la
+		# tercera columna (el valor del tiempo). Dejar los valores en variables
+		# para poder imprimirlos en la misma línea del fichero de datos
+		slowTime=$(./slow "$N" | grep 'time' | awk '{print $3}')
+		fastTime=$(./fast "$N" | grep 'time' | awk '{print $3}')
+
+		slowTime_t[$j]=$(echo "${slowTime_t[$j]}" "$slowTime" | awk '{print $1 + $2}')
+		fastTime_t[$j]=$(echo "${fastTime_t[$j]}" "$fastTime" | awk '{print $1 + $2}')
+	done
+done
+
+echo "Computing the average..."
+for ((j = 0, N = Ninicio ; N <= Nfinal ; N += Npaso, j += 1)); do
 	echo "N: $N / $Nfinal..."
-	
-	# ejecutar los programas slow y fast consecutivamente con tamaño de matriz N
-	# para cada uno, filtrar la línea que contiene el tiempo y seleccionar la
-	# tercera columna (el valor del tiempo). Dejar los valores en variables
-	# para poder imprimirlos en la misma línea del fichero de datos
-	slowTime=$(./slow $N | grep 'time' | awk '{print $3}')
-	fastTime=$(./fast $N | grep 'time' | awk '{print $3}')
+
+	slowTime=$(echo "${slowTime_t[$j]}" "$Iter" | awk '{print $1 / $2}')
+	fastTime=$(echo "${fastTime_t[$j]}" "$Iter" | awk '{print $1 / $2}')
 
 	echo "$N	$slowTime	$fastTime" >> $fDAT
 done
 
 echo "Generating plot..."
-# llamar a gnuplot para generar el gráfico y pasarle directamente por la entrada
-# estándar el script que está entre "<< END_GNUPLOT" y "END_GNUPLOT"
 gnuplot << END_GNUPLOT
 set title "Slow-Fast Execution Time"
 set ylabel "Execution time (s)"
