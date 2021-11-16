@@ -49,10 +49,10 @@ for ((j = 0, N = Ninicio ; N <= Nfinal ; N += Npaso, j += 1)); do
     valgrind --tool=cachegrind --cachegrind-out-file=normal.out ./normal "$N"
     valgrind --tool=cachegrind --cachegrind-out-file=trans.out ./traspuesta "$N"
 
-    normalD1mr=$(cg_annotate normal.out | grep PROGRAM | awk '{print $9}' | tr -d ',')
-    normalD1mw=$(cg_annotate normal.out | grep PROGRAM | awk '{print $15}' | tr -d ',')
-    transD1mr=$(cg_annotate trans.out | grep PROGRAM | awk '{print $9}' | tr -d ',')
-    transD1mw=$(cg_annotate trans.out | grep PROGRAM | awk '{print $15}' | tr -d ',')
+    normalD1mr=$(cg_annotate normal.out | grep PROGRAM | awk '{print $5}' | tr -d ',')
+    normalD1mw=$(cg_annotate normal.out | grep PROGRAM | awk '{print $8}' | tr -d ',')
+    transD1mr=$(cg_annotate trans.out | grep PROGRAM | awk '{print $5}' | tr -d ',')
+    transD1mw=$(cg_annotate trans.out | grep PROGRAM | awk '{print $8}' | tr -d ',')
 
     echo "$N $normalTime $normalD1mr $normalD1mw $transTime $transD1mr $transD1mw" >> $fDAT
 done
