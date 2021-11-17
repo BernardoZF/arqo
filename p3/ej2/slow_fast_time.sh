@@ -3,9 +3,9 @@
 #!/bin/bash
 
 # inicializar variables
-Ninicio=100
-Npaso=16
-Nfinal=$((Ninicio + 100))
+Ninicio=$((1024 + 1024 * 2))
+Npaso=256
+Nfinal=$((1024 + 1024 * (2 + 1)))
 fDAT=slow_fast_time.dat
 fPNG=slow_fast_time.png
 # Anadir valgrind y gnuplot al path
