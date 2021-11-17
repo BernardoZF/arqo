@@ -7,12 +7,7 @@ Nfinal=$((16384))
 fDAT=slow_fast_time.dat
 fPNG=slow_fast_time.png
 Iter=13
-# Anadir valgrind y gnuplot al path
-export PATH=$PATH:/share/apps/tools/valgrind/bin:/share/apps/tools/gnuplot/bin
-# Indicar ruta librerías valgrind
-export VALGRIND_LIB=/share/apps/tools/valgrind/lib/valgrind
-# borrar el fichero DAT y el fichero PNG
-rm -f $fDAT $fPNG
+
 
 # generar el fichero DAT vacío
 touch $fDAT
