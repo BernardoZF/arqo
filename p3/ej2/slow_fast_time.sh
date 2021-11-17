@@ -8,7 +8,10 @@ Npaso=16
 Nfinal=$((Ninicio + 100))
 fDAT=slow_fast_time.dat
 fPNG=slow_fast_time.png
-
+# Anadir valgrind y gnuplot al path
+export PATH=$PATH:/share/apps/tools/valgrind/bin:/share/apps/tools/gnuplot/bin
+# Indicar ruta librerías valgrind
+export VALGRIND_LIB=/share/apps/tools/valgrind/lib/valgrind
 # borrar el fichero DAT y el fichero PNG
 rm -f $fDAT fPNG
 
