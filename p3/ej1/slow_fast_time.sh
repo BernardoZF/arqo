@@ -1,5 +1,11 @@
 #!/bin/bash
 
+
+# Anadir valgrind y gnuplot al path
+export PATH=$PATH:/share/apps/tools/valgrind/bin:/share/apps/tools/gnuplot/bin
+# Indicar ruta librerías valgrind
+export VALGRIND_LIB=/share/apps/tools/valgrind/lib/valgrind
+
 # inicializar variables
 Ninicio=$((1024))
 Npaso=1024
