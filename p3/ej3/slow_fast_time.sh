@@ -1,4 +1,14 @@
 #!/bin/bash
+#
+#$ -S /bin/bash
+#$ -cwd
+#$ -o salida.out
+
+#$ -j y
+# Anadir valgrind y gnuplot al path
+export PATH=$PATH:/share/apps/tools/valgrind/bin:/share/apps/tools/gnuplot/bin
+# Indicar ruta librerías valgrind
+export VALGRIND_LIB=/share/apps/tools/valgrind/lib/valgrind
 
 #inicializar variables
 Ninicio=$((256 + 256 * 2))
@@ -13,11 +23,6 @@ Niter=5
 rm -f $fDAT $fPNG_Cache $fPNG_Time
 
 touch $fDAT
-
-# Anadir valgrind y gnuplot al path
-export PATH=$PATH:/share/apps/tools/valgrind/bin:/share/apps/tools/gnuplot/bin
-# Indicar ruta librerías valgrind
-export VALGRIND_LIB=/share/apps/tools/valgrind/lib/valgrind
 
 echo "Running normal mult and transpose mult..."
 #Calculo del tamanio del array de tiempos
