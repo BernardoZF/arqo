@@ -1,0 +1,145 @@
+Numero de pareja -> (2 mod 8) + 1 = 3
+
+Ejercicio 0
+
+
+Para saber si un procesador dispone de hyperthreading necesitamos mirar
+el número de cores y compararlos con el parámetro siblings. Si ambos son
+iguales significa que no tiene. En el caso de mi ordenador esto se cumple,
+por lo que no tiene hyperthreading
+
+Mi ordenador dispone de un procesador de 4 cores de 3.10GHz sin hyperthreading.
+
+
+Ejercicio 1
+
+
+1.1 ¿Se pueden lanzar más threads que cores tenga el sistema? ¿Tiene sentido hacerlo?
+
+Si se pueden, pero no tiene sentido hacerlo ya que buscamos que las tareas
+se realicen en paralelo y no mediante una planificación por parte del SO
+que alterna en la ejecucion de cada uno.
+
+
+1.2 ¿Cuántos threads debería utilizar en los ordenadores del laboratorio?
+¿y en el clúster? ¿y en su propio equipo?
+
+El número que corresponda al mayor número de cores lógicos que se encuentren
+en alguno de los procesadores del cluster.
+
+En mi equipo no hay hyperthreading, por lo que se deberán lanzar tantos hilos
+como cores físicos haya en la cpu, que serían 4 en este caso.
+
+
+1.3 Modifique el programa omp1.c para utilizar las tres formas de elegir el
+número de threads y deduzca la prioridad entre ellas.
+
+Tras realizar las distintas pruebas con el archivo omp1.c hemos llegado a la
+conclusión que la prioridad de mayor a menor es: 
+
+cláusula -> función -> variable de entorno
+
+----------------------------------------------------------------------
+Salida de la ejecucion de omp2
+----------------------------------------------------------------------
+shadeeon@Shadeeon:~/Universidad/arqo/p4$ ./omp2
+Inicio: a = 1,	 b = 2,	 c = 3
+	 &a = 0x7fffb473d594,x	 &b = 0x7fffb473d598,	 &c = 0x7fffb473d59c
+
+[Hilo 0]-1: a = 0,	 b = 2,	 c = 3
+[Hilo 0]	 &a = 0x7fffb473d530,	 &b = 0x7fffb473d598,	 &c = 0x7fffb473d52c
+[Hilo 0]-2: a = 15,	 b = 4,	 c = 3
+[Hilo 1]-1: a = 0,	 b = 2,	 c = 3
+[Hilo 1]	 &a = 0x7fd51bcece20,	 &b = 0x7fffb473d598,	 &c = 0x7fd51bcece1c
+[Hilo 1]-2: a = 21,	 b = 6,	 c = 3
+[Hilo 2]-1: a = 0,	 b = 2,	 c = 3
+[Hilo 2]	 &a = 0x7fd51b4ebe20,	 &b = 0x7fffb473d598,	 &c = 0x7fd51b4ebe1c
+[Hilo 2]-2: a = 27,	 b = 8,	 c = 3
+[Hilo 3]-1: a = 0,	 b = 2,	 c = 3
+[Hilo 3]	 &a = 0x7fd51aceae20,	 &b = 0x7fffb473d598,	 &c = 0x7fd51aceae1c
+[Hilo 3]-2: a = 33,	 b = 10,	 c = 3
+
+Fin: a = 1,	 b = 10,	 c = 3
+	 &a = 0x7fffb473d594,	 &b = 0x7fffb473d598,	 &c = 0x7fffb473d59c
+-----------------------------------------------------------------------
+
+
+1.4 ¿Como se comporta OpenMP cuando declaramos una variable privada?
+
+OpenMP crea una nueva variable con el mismo nombre de la privada. La nueva
+variable tiene una dirección de memoria distinta, por lo que al sufrir
+modificaciones estas no se reflejan en la variable del thread master.
+Cada thread tiene una dirección de memoria distinta para esta variable.
+
+
+1.5 ¿Qué ocurre con el valor de una variable privada al comenzar a ejecutarse
+la región paralela?
+
+Si se trata de una variable definida como firstprivate, su valor comienza
+siendo el mismo que su valor en la región no paralela. Si por el contrario
+se trata de una variable definida como private su valor inicial no coincide
+con el de la región no paralela. Tendrá el valor que tenga la región de
+memoria que se le asigna.
+
+
+1.6 ¿Que ocurre con el valor de una variable privada al finalizar la región paralela?
+
+mantiene el valor que tenía antes de entrar en la región paralela.
+
+
+1.7 ¿Ocurre lo mismo con las variables públicas?
+
+No. Como puede verse en el ejemplo la dirección de memoria de la variable
+pública es la misma tanto en ambas regiones, por lo que cuando el valor
+se modifica en la región paralela también se ve modificada el valor
+en la región no paralela.
+
+
+2.1 Ejecute la versión serie y entienda cual debe ser el resultado
+para diferentes tamaños de vector.
+
+El programa calcula el producto escalar de dos vectores, por lo que
+el resultado del mismo siempre será el tamaño de los vectores.
+
+
+2.2 Ejecute el código paralelizado con el pragma openmp y conteste en
+la memoria a las siguientes preguntas:
+
+- ¿Es correcto el resultado?
+
+No, el resultado debería ser igual al de la ejecucion del programa
+en serie.
+
+- ¿Qué puede estar pasando?
+
+La variable sum se establece como shared por defecto en openmp. Esto
+causa que todos los hilos lean y escriban de la misma variable, por lo
+cual los hilos muchas veces no están leyendo el valor real de la
+variable.
+
+
+2.3 Modifique el código anterior y denomine el programa pescalar_par2:
+
+
+- ¿Puede resolverse con ambas directivas? Indique las modificaciones
+realizadas en cada caso.
+
+Si, en el caso de la directiva atomic debemos reescribir la sentencia de
+sum=sum+A[k]*B[k] a sum+=A[k]*B[k]. Para la directiva critical únicamente
+hay que meter el código entre {}.
+
+
+- ¿Cuál es la opción elegida y por qué?
+
+La opción elegida es atomic ya que se trata de una única sentencia RMW
+sencilla y tras hacer algunas pruebas se ha observado que es más rápida.
+
+
+2.4 Modifique el código anterior y denomine el programa resultante pescalar_par3.
+
+
+- Comparando con el punto anterior ¿Cuál será la opción elegida y por qué?
+
+La opción elegida será el pragma reduction porque llegamos a un
+resultado correcto y el tiempo de ejecución muestra diferencias bastante
+notables, siendo mucho más rápido que las opciones anteriores.
