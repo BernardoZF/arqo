@@ -95,6 +95,9 @@ se modifica en la región paralela también se ve modificada el valor
 en la región no paralela.
 
 
+Ejercicio 2
+
+
 2.1 Ejecute la versión serie y entienda cual debe ser el resultado
 para diferentes tamaños de vector.
 
@@ -143,3 +146,59 @@ sencilla y tras hacer algunas pruebas se ha observado que es más rápida.
 La opción elegida será el pragma reduction porque llegamos a un
 resultado correcto y el tiempo de ejecución muestra diferencias bastante
 notables, siendo mucho más rápido que las opciones anteriores.
+
+
+Ejercicio 3
+
+
+Para una matriz de 1000x1000 el programa normal_serie.c tarda 8.74s
+Para alcanzar una medicion de aproximadamente 1 minuto necesitamos
+ejecutar el programa con una matrizde 1750x1750
+
+Para rellenar la tabla lo haremos ejecutando los programas sobre una
+matriz de 1750x1750
+
+
+version\# hilos		1			2			3			4
+serie				66.64
+paralela-bucle1		66.45		33.49		23.31		17.70
+paralela-bucle2		66.12		35.32		21.92		17.69
+paralela-bucle3		63.45		32.57		21.18		16.68
+
+El bucle 1 es el mas interno y el 3 el mas externo
+
+
+3.1 ¿Cuál de las tres versiones obtiene peor rendimiento? ¿A qué se debe?
+¿Cuál de las tres versiones obtiene mejor rendimiento? ¿A qué se debe?
+
+
+El programa con peor rendimiento es el que tiene el bucle mas externo
+paralelizado. Esto se puede deber a que se estan usando mas recursos
+de los que son necesarios, aumentando asi el tiempo de ejecucion.
+
+Por el contrario el programa con mejor rendimiento es el que tiene el
+bucle mas interno paralelizado. Su rendimiento se puede deber a que 
+hace uso de los recursos estrictamente necesarios.
+
+
+3.2 En base a los resultados, ¿cree que es preferible la paralelización
+de grano fino (bucle más interno) o de grano grueso (bucle más externo)
+en otros algoritmos?
+
+
+En base a estos resultados podemos concluir que en algoritmos similares
+a este es preferible la paralelización de grano grueso.
+
+
+3.5 Descripción de la gráfica de tiempos para el calculo de la
+multiplicacion en serie y en paralelo.
+
+
+Realizamos la grafica entre los valores 512+P = 515 y 1024+512+P = 1577
+con incrementos de 64 unidades. Los archivos referentes a esta parte del
+ejercicio se encuentran en la carpeta "ejercicio3"
+
+Se observa que para tamaños pequeños las diferencias entre tiempos
+de ejecución no son significativas. Sin embargo a partir de un tamaño
+de aproximadamente 1000 elementos las diferencias que se observan
+comienzan a tomar importancia.
